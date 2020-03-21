@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "initializer_list": "cpp",
+        "ctime": "cpp",
+        "*.tcc": "cpp",
+        "memory": "cpp",
+        "random": "cpp",
+        "istream": "cpp",
+        "fstream": "cpp",
+        "iosfwd": "cpp",
+        "limits": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp"
+    }
+}
