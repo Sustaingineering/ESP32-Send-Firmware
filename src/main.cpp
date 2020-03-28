@@ -24,6 +24,7 @@
 #define SIM800L_POWER  23
 
 char replybuffer[255];
+char sendto[21] = "7786684301";
 
 HardwareSerial *sim800lSerial = &Serial1;
 Adafruit_FONA sim800l = Adafruit_FONA(SIM800L_PWRKEY);
@@ -34,6 +35,7 @@ uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
 #define RELAY 14
 
 String smsString = "";
+void send_sms(float LoadVoltage, float LoadCurrent, float Power, float SolTemp, bool WaterBreakerFlag);
 
 void setup()
 {
@@ -45,8 +47,8 @@ void setup()
   digitalWrite(SIM800L_POWER, HIGH);
 
   Serial.begin(115200);
-  Serial.println(F("ESP32 with GSM SIM800L"));
-  Serial.println(F("Initializing....(May take more than 10 seconds)"));
+  Serial.println(F("Welcome to Sustaingineering 3G TxRx-ESP Version :D"));
+  Serial.println(F("Initializing SIM800L communication with ESP32....(May take more than 10 seconds)"));
   
   delay(10000);
 
@@ -55,107 +57,62 @@ void setup()
   if (!sim800l.begin(*sim800lSerial)) {
     Serial.println(F("Couldn't find GSM SIM800L"));
     while (1);
-  }
+  } 
   Serial.println(F("GSM SIM800L is OK"));
+  Serial.println(F("Searching for network...\n"));
 
-  char imei[16] = {0}; // MUST use a 16 character buffer for IMEI!
-  uint8_t imeiLen = sim800l.getIMEI(imei);
-  if (imeiLen > 0) {
-    Serial.print("SIM card IMEI: "); Serial.println(imei);
+  //below code checks and waits for network to be connected
+  bool SIMFound= false;
+  for (int countdown = 600; countdown >= 0 && SIMFound == false; countdown--)
+  {
+    uint8_t n = sim800l.getNetworkStatus(); // constantly check until network is connected to home sendCheckReply(F("AT+CLVL="), i, ok_reply);
+    if (n == 1)
+    {
+      SIMFound = true;
+      Serial.print(F("Found!")); // If program hangs here, SIM card cannot be read/connect to network
+      Serial.println(F("Network Connected"));
+    }
   }
-
-  // Set up the FONA to send a +CMTI notification
-  // when an SMS is received
-  sim800lSerial->print("AT+CNMI=2,1\r\n");
-
-  Serial.println("GSM SIM800L Ready");
+  if (!SIMFound)
+  {
+    Serial.println(F("SIM card could not be found. Please ensure that your SIM card is compatible with dual-band UMTS/HSDPA850/1900MHz WCDMA + HSDPA."));
+    while (1)
+      ;
+  }
+  Serial.println("GSM SIM800L Ready"); //Everythingready!
 }
-
-long prevMillis = 0;
-int interval = 1000;
-char sim800lNotificationBuffer[64];          //for notifications from the FONA
-char smsBuffer[250];
-boolean ledState = false;
 
 void loop()
 {
-  if (millis() - prevMillis > interval) {
-    ledState = !ledState;
-    digitalWrite(LED_BLUE, ledState);
-
-    prevMillis = millis();
-  }
+  delay(10000); //for now we will use a 10 second delay, and pass it values from 0->4
+  float SourceVoltage=0;
+  float HallAmps=1;
+  float Power=2;
+  float SolTemp=3;
+  bool WaterBreakerFlag=4;
+  send_sms(SourceVoltage, HallAmps, Power, SolTemp, WaterBreakerFlag);
   
-  char* bufPtr = sim800lNotificationBuffer;    //handy buffer pointer
+}
 
-  if (sim800l.available()) {
-    int slot = 0; // this will be the slot number of the SMS
-    int charCount = 0;
+void send_sms(float LoadVoltage, float LoadCurrent, float Power, float SolTemp, bool WaterBreakerFlag){
+    //note, we may need to run rtc stamping inside this function according to Forbes
+    char message[0]; 
 
-    // Read the notification into fonaInBuffer
-    do {
-      *bufPtr = sim800l.read();
-      Serial.write(*bufPtr);
-      delay(1);
-    } while ((*bufPtr++ != '\n') && (sim800l.available()) && (++charCount < (sizeof(sim800lNotificationBuffer)-1)));
-    
-    //Add a terminal NULL to the notification string
-    *bufPtr = 0;
+    //for now we will not have the RTC timer included in this 
+    String str;
+    str = (String)(LoadVoltage) + "," + (String)(LoadCurrent) + "," + (String)(SolTemp); // "," (String)(WaterBreakerFlag);
 
-    //Scan the notification string for an SMS received notification.
-    //  If it's an SMS message, we'll get the slot number in 'slot'
-    if (1 == sscanf(sim800lNotificationBuffer, "+CMTI: \"SM\",%d", &slot)) {
-      Serial.print("slot: "); Serial.println(slot);
-      
-      char callerIDbuffer[32];  //we'll store the SMS sender number in here
-      
-      // Retrieve SMS sender address/phone number.
-      if (!sim800l.getSMSSender(slot, callerIDbuffer, 31)) {
-        Serial.println("Didn't find SMS message in slot!");
-      }
-      Serial.print(F("FROM: ")); Serial.println(callerIDbuffer);
+    Serial.print("str content:");
+    Serial.println(str);
+    str.toCharArray(message,141); //do I need to change this string length
 
-      // Retrieve SMS value.
-      uint16_t smslen;
-      // Pass in buffer and max len!
-      if (sim800l.readSMS(slot, smsBuffer, 250, &smslen)) {
-        smsString = String(smsBuffer);
-        Serial.println(smsString);
-      }
+    Serial.print(F("Your message is: "));
+    Serial.println(message);
 
-      if (smsString == "RELAY ON") {
-        Serial.println("Relay is activated.");
-        digitalWrite(RELAY, HIGH);
-        delay(100);
-        // Send SMS for status
-        if (!sim800l.sendSMS(callerIDbuffer, "Relay is activated.")) {
-          Serial.println(F("Failed"));
-        } else {
-          Serial.println(F("Sent!"));
-        }
-      }
-      else if (smsString == "RELAY OFF") {
-        Serial.println("Relay is deactivated.");
-        digitalWrite(RELAY, LOW);
-        delay(100);
-        // Send SMS for status
-        if (!sim800l.sendSMS(callerIDbuffer, "Relay is deactivated.")) {
-          Serial.println(F("Failed"));
-        } else {
-          Serial.println(F("Sent!"));
-        }
-      }
-
-      while (1) {
-        if (sim800l.deleteSMS(slot)) {
-          Serial.println(F("OK!"));
-          break;
-        }
-        else {
-          Serial.print(F("Couldn't delete SMS in slot ")); Serial.println(slot);
-          sim800l.print(F("AT+CMGD=?\r\n"));
-        }
-      }
-    }
+    while (sim800l.sendSMS(sendto, message) == 0) //send sms can send strings. first string argument is our phone number, second string is the message
+  {
+    Serial.println(F("SMS sending failed."));
   }
+  Serial.println(F("SMS sending succeeded."));
+  Serial.println();
 }
