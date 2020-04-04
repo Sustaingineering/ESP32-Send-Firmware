@@ -17,13 +17,13 @@ farmGSM our_GSM(27,26,4,5,23);
 
 void setup()
 {
-  //our_GSM.initialize_sending();
-  our_GSM.initialize_receiving();
+  our_GSM.initialize_sending();
+  //our_GSM.initialize_receiving();
 }
 
 void loop()
 {
-  /* For sending testing 
+  //For sending testing 
   delay(10000); //for now we will use a 10 second delay, and pass it arbitrary values
   float SourceVoltage=0;
   float HallAmps=1;
@@ -31,6 +31,9 @@ void loop()
   float SolTemp=3;
   bool WaterBreakerFlag=4;
   our_GSM.send_sms(SourceVoltage, HallAmps, Power, SolTemp, WaterBreakerFlag);
-*/
+
+
+  /*For receiving testing
   our_GSM.receive_sms();
+  */
 }
