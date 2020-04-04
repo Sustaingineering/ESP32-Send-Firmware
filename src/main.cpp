@@ -13,21 +13,24 @@
 #include "farmGSM.h"
 
 //GSM constructor with pin assignments from above
-farmGSM sender(27,26,4,5,23);
+farmGSM our_GSM(27,26,4,5,23);
 
 void setup()
 {
-  sender.initialize_sending();
+  //our_GSM.initialize_sending();
+  our_GSM.initialize_receiving();
 }
 
 void loop()
 {
+  /* For sending testing 
   delay(10000); //for now we will use a 10 second delay, and pass it arbitrary values
   float SourceVoltage=0;
   float HallAmps=1;
   float Power=2;
   float SolTemp=3;
   bool WaterBreakerFlag=4;
-  sender.send_sms(SourceVoltage, HallAmps, Power, SolTemp, WaterBreakerFlag);
-  
+  our_GSM.send_sms(SourceVoltage, HallAmps, Power, SolTemp, WaterBreakerFlag);
+*/
+  our_GSM.receive_sms();
 }
